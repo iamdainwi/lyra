@@ -65,10 +65,10 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="flex flex-col items-center w-full px-4 py-10 gap-12 max-w-3xl mx-auto">
+    <div className="flex items-center w-full max-w-3xl mx-auto h-screen">
 
       {/* Hero Search */}
-      <div className="w-full text-center space-y-3 pt-6">
+      <div className="w-full text-center space-y-3">
         <h1 className="text-4xl md:text-5xl font-heading font-black tracking-tight leading-tight">
           What do you want to<br />
           <span className="text-primary">research today?</span>
@@ -113,56 +113,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent sessions */}
-      <div className="w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Recent Research</h2>
-          {sessions.length > 0 && (
-            <span className="text-xs text-muted-foreground">{sessions.length} session{sessions.length !== 1 ? "s" : ""}</span>
-          )}
-        </div>
 
-        {sessionsLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : sessions.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center gap-2">
-              <Search className="w-8 h-8 text-muted-foreground/40 mb-2" />
-              <p className="font-medium text-muted-foreground">No research sessions yet</p>
-              <p className="text-sm text-muted-foreground/60">Submit a question above to get started.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {sessions.map((session) => (
-              <Card
-                key={session.id}
-                className="cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all"
-                onClick={() => router.push(`/dashboard/research/${session.id}`)}
-              >
-                <CardHeader className="py-3 px-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-sm font-medium truncate leading-snug">{session.original_query}</CardTitle>
-                      <CardDescription className="text-xs mt-0.5">
-                        {new Date(session.created_at).toLocaleString()}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {statusIcon(session.status)}
-                      <Badge variant={statusVariant(session.status)} className="capitalize text-xs">
-                        {session.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

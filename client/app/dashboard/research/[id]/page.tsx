@@ -57,8 +57,8 @@ function DebateAccordion({ messages }: { messages: DebateMessage[] }) {
           >
             <AccordionPrimitive.Trigger
               className={`flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-all hover:no-underline [&[data-state=open]>svg]:rotate-180 ${isResearcher
-                ? "bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400"
-                : "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
+                ? "bg-blue-500/10 border-blue-500/20 text-blue-700"
+                : "bg-amber-500/10 border-amber-500/20 text-amber-700"
                 }`}
             >
               <div className="flex items-center gap-2">
@@ -67,8 +67,8 @@ function DebateAccordion({ messages }: { messages: DebateMessage[] }) {
               </div>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-200"><path d="m6 9 6 6 6-6" /></svg>
             </AccordionPrimitive.Trigger>
-            <AccordionPrimitive.Content className="overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-              <div className="px-4 py-4 bg-card text-card-foreground prose prose-sm dark:prose-invert max-w-none prose-pre:bg-[#0d1117] prose-pre:m-0 prose-p:leading-relaxed">
+            <AccordionPrimitive.Content className="overflow-hidden text-sm data-[state=closed]:animate-accordion-up">
+              <div className="px-4 py-4 text-card-foreground prose prose-sm dark:prose-invert max-w-none prose-pre:bg-[#0d1117] prose-pre:m-0 prose-p:leading-relaxed">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeHighlight]}
@@ -262,7 +262,10 @@ export default function ResearchSessionPage(props: { params: Promise<{ id: strin
             </CardContent>
           </Card>
 
-          <Card>
+
+        </div>
+<div className="lg:col-span-1">
+  <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <BookOpen className="w-4 h-4 text-muted-foreground" />
@@ -298,29 +301,28 @@ export default function ResearchSessionPage(props: { params: Promise<{ id: strin
               </ScrollArea>
             </CardContent>
           </Card>
-        </div>
-
+</div>
         {/* Right: Debate */}
-        <div className="lg:col-span-1">
-          <Card className="sticky top-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <MessageSquare className="w-4 h-4 text-muted-foreground" />
-                Agent Debate
-              </CardTitle>
-              <CardDescription>Multi-turn reasoning trace</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-200 px-4 pb-4">
-                {debate.length === 0 ? (
-                  <p className="text-sm text-muted-foreground italic text-center py-8">No debate transcript available.</p>
-                ) : (
-                  <DebateAccordion messages={debate} />
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
+        {/*<div className="lg:col-span-1">*/}
+        {/*  <Card className="sticky top-4">*/}
+        {/*    <CardHeader className="pb-3">*/}
+        {/*      <CardTitle className="flex items-center gap-2 text-base">*/}
+        {/*        <MessageSquare className="w-4 h-4 text-muted-foreground" />*/}
+        {/*        Agent Debate*/}
+        {/*      </CardTitle>*/}
+        {/*      <CardDescription>Multi-turn reasoning trace</CardDescription>*/}
+        {/*    </CardHeader>*/}
+        {/*    <CardContent className="p-0">*/}
+        {/*      <ScrollArea className="h-200 px-4 pb-4">*/}
+        {/*        {debate.length === 0 ? (*/}
+        {/*          <p className="text-sm text-muted-foreground italic text-center py-8">No debate transcript available.</p>*/}
+        {/*        ) : (*/}
+        {/*          <DebateAccordion messages={debate} />*/}
+        {/*        )}*/}
+        {/*      </ScrollArea>*/}
+        {/*    </CardContent>*/}
+        {/*  </Card>*/}
+        {/*</div>*/}
       </div>
     </div>
   );

@@ -83,17 +83,17 @@ function AppSidebar({ sessions, sessionsLoading }: { sessions: ResearchSession[]
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
+              {/*<SidebarMenuItem>*/}
+              {/*  <SidebarMenuButton isActive={pathname === "/dashboard"} className="cursor-pointer">*/}
+              {/*    <Link href="/dashboard" className="flex items-center space-x-1.5">*/}
+              {/*      <LayoutDashboard className="w-4 h-4" />*/}
+              {/*      <span>Dashboard</span>*/}
+              {/*    </Link>*/}
+              {/*  </SidebarMenuButton>*/}
+              {/*</SidebarMenuItem>*/}
               <SidebarMenuItem>
-                <SidebarMenuButton isActive={pathname === "/dashboard"}>
-                  <Link href="/dashboard">
-                    <LayoutDashboard className="w-4 h-4" />
-                    <span>Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton>
-                  <Link href="/dashboard">
+                <SidebarMenuButton className="cursor-pointer">
+                  <Link href="/dashboard" className="flex items-center space-x-1.5">
                     <Plus className="w-4 h-4" />
                     <span>New Research</span>
                   </Link>
@@ -124,12 +124,14 @@ function AppSidebar({ sessions, sessionsLoading }: { sessions: ResearchSession[]
                   const isActive = pathname === `/dashboard/research/${session.id}`;
                   return (
                     <SidebarMenuItem key={session.id}>
-                      <SidebarMenuButton isActive={isActive} className="h-auto py-2">
-                        <Link href={`/dashboard/research/${session.id}`}>
+                      <Link href={`/dashboard/research/${session.id}`} className="cursor-pointer">
+                      <SidebarMenuButton isActive={isActive} className="h-auto py-2 flex items-center">
+
                           <StatusIcon status={session.status} />
                           <span className="truncate text-xs leading-snug">{session.original_query}</span>
-                        </Link>
+
                       </SidebarMenuButton>
+                      </Link>
                     </SidebarMenuItem>
                   );
                 })

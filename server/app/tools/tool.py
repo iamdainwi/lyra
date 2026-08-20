@@ -7,7 +7,7 @@ class SearchResult(BaseModel):
     url: str
     snippet: str
 
-def web_search(query: str, max_results: int = 5) -> List[SearchResult]:
+def web_search(query: str, max_results: int = 10) -> List[SearchResult]:
     """
     Search the web for information and return the results.
     """
