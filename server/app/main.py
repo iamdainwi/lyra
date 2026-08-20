@@ -16,7 +16,7 @@ app = FastAPI(title=settings.app_name, lifespan=lifespan)
 # Allow CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this
+    allow_origins=["https://lyra.iamdainwi.dev/", "https://lyra.iamdainwi.dev"], # In production, restrict this
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
