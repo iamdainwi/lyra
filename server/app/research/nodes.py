@@ -14,8 +14,8 @@ async def expand_query_node(state: ResearchState) -> ResearchState:
     
     prompt = f"""You are a research query expansion expert. 
 Given the user query: "{original_query}"
-Generate 3 to 5 distinct search queries to thoroughly investigate the topic from different dimensions.
-Output as a JSON object with a single key "queries" containing a list of strings."""
+Generate exactly 3 distinct search queries to investigate the topic from different angles.
+Output as a JSON object with a single key "queries" containing a list of 3 strings."""
 
     response = await llm.ainvoke([HumanMessage(content=prompt)])
     try:
@@ -29,12 +29,16 @@ Output as a JSON object with a single key "queries" containing a list of strings
 
 async def search_node(state: ResearchState) -> ResearchState:
     queries = state["expanded_queries"]
-    all_results = []
-    for query in queries:
-        results = web_search(query, max_results=3)
-        for r in results:
-            all_results.append({"query": query, "title": r.title, "url": r.url, "snippet": r.snippet})
-            
+
+    # Run all search queries concurrently
+    loop = asyncio.get_event_loop()
+    async def run_search(query: str):
+        results = await loop.run_in_executor(None, web_search, query, 3)
+        return [{"query": query, "title": r.title, "url": r.url, "snippet": r.snippet} for r in results]
+
+    batches = await asyncio.gather(*[run_search(q) for q in queries], return_exceptions=True)
+    all_results = [item for batch in batches if isinstance(batch, list) for item in batch]
+
     state["search_results"] = all_results
     return state
 
@@ -44,7 +48,7 @@ async def extract_node(state: ResearchState) -> ResearchState:
     
     # We will fetch URLs concurrently to speed up
     async def fetch_and_store(res):
-        content = await extract_html(res["url"])
+        content = await extract_html(res["url"], timeout=6)  # tight cap so slow sites don't block
         if content:
             sources.append({
                 "title": res["title"],

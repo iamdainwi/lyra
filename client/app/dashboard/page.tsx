@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Loader2, ArrowRight, Clock, CheckCircle, XCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,22 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<ResearchSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const router = useRouter();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 240) + "px";
+  }, [query]);
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSearch(e as any);
+    }
+  };
 
   useEffect(() => {
     api.get<ResearchSession[]>("/research/history")
@@ -77,36 +93,48 @@ export default function DashboardPage() {
           Lyra&apos;s agents will debate and synthesize the answer from live web sources.
         </p>
 
-        <form onSubmit={handleSearch} className="flex gap-2 w-full mt-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
+        <div className="w-full mt-8 text-left">
+          <div className="relative flex flex-col rounded-2xl border border-border bg-background shadow-sm focus-within:border-foreground/30 focus-within:shadow-md transition-all">
+            <textarea
               id="research-query"
-              className="pl-10 h-12 text-base"
-              placeholder="Ask a research question..."
+              ref={textareaRef}
+              rows={1}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
               disabled={isLoading}
+              placeholder="Ask anything..."
+              className="w-full resize-none bg-transparent text-base md:text-lg outline-none placeholder:text-muted-foreground/50 px-5 pt-4 pb-12 max-h-60 disabled:opacity-50"
             />
+            
+            <div className="absolute bottom-3 left-4 right-3 flex items-center justify-between">
+              {/* Fake Pro toggle for aesthetic */}
+              <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-muted/50 text-xs font-medium text-muted-foreground">
+                <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+                Pro Search
+              </div>
+
+              <button
+                onClick={handleSearch}
+                disabled={isLoading || !query.trim()}
+                className="h-10 w-10 rounded-full bg-foreground text-background flex items-center justify-center shrink-0 disabled:opacity-20 disabled:cursor-not-allowed hover:opacity-80 active:scale-95 transition-all"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
-          <Button type="submit" className="h-12 px-5" disabled={isLoading || !query.trim()}>
-            {isLoading
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <><ArrowRight className="w-4 h-4 mr-1" />Research</>
-            }
-          </Button>
-        </form>
+        </div>
 
         {/* Suggestion chips */}
-        <div className="flex flex-wrap gap-2 justify-center pt-2">
+        <div className="flex flex-wrap gap-2 justify-center pt-4">
           {suggestions.map((s) => (
             <button
               key={s}
               type="button"
-              onClick={() => setQuery(s)}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border bg-card hover:bg-accent hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground"
+              onClick={() => { setQuery(s); setTimeout(() => handleSearch(new Event("submit") as any), 0); }}
+              className="flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-full border border-border/70 bg-muted/20 hover:bg-muted/60 hover:border-border transition-colors text-muted-foreground hover:text-foreground"
             >
-              <Zap className="w-3 h-3 text-primary" />
+              <Search className="w-3 h-3 opacity-50" />
               {s}
             </button>
           ))}

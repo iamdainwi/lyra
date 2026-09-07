@@ -6,8 +6,8 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import api from "@/lib/api";
 import {
-  BrainCircuit, Plus, LayoutDashboard, LogOut,
-  Clock, CheckCircle, XCircle, Loader2,
+  BrainCircuit, Plus, LogOut,
+  Clock, CheckCircle, XCircle, Loader2, User,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,6 +27,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -105,38 +106,70 @@ function AppSidebar({ sessions, sessionsLoading }: { sessions: ResearchSession[]
 
         {/* Recent Sessions */}
         <SidebarGroup>
-          <SidebarGroupLabel>Recent Sessions</SidebarGroupLabel>
+          <SidebarGroupLabel>History</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {sessionsLoading ? (
+            {sessionsLoading ? (
+              <SidebarMenu>
                 <SidebarMenuItem>
                   <div className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     <span>Loading...</span>
                   </div>
                 </SidebarMenuItem>
-              ) : sessions.length === 0 ? (
+              </SidebarMenu>
+            ) : sessions.length === 0 ? (
+              <SidebarMenu>
                 <SidebarMenuItem>
                   <p className="px-2 py-1 text-xs text-muted-foreground italic">No sessions yet.</p>
                 </SidebarMenuItem>
-              ) : (
-                sessions.slice(0, 15).map((session) => {
-                  const isActive = pathname === `/dashboard/research/${session.id}`;
-                  return (
-                    <SidebarMenuItem key={session.id}>
-                      <Link href={`/dashboard/research/${session.id}`} className="cursor-pointer">
-                      <SidebarMenuButton isActive={isActive} className="h-auto py-2 flex items-center">
+              </SidebarMenu>
+            ) : (
+              <div className="space-y-4 pt-2">
+                {(() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const prev7Days = new Date(today);
+                  prev7Days.setDate(today.getDate() - 7);
 
-                          <StatusIcon status={session.status} />
-                          <span className="truncate text-xs leading-snug">{session.original_query}</span>
+                  const groups: Record<string, ResearchSession[]> = {
+                    "Today": [],
+                    "Previous 7 Days": [],
+                    "Older": []
+                  };
 
-                      </SidebarMenuButton>
-                      </Link>
-                    </SidebarMenuItem>
-                  );
-                })
-              )}
-            </SidebarMenu>
+                  sessions.slice(0, 30).forEach(session => {
+                    const d = new Date(session.created_at);
+                    if (d >= today) groups["Today"].push(session);
+                    else if (d >= prev7Days) groups["Previous 7 Days"].push(session);
+                    else groups["Older"].push(session);
+                  });
+
+                  return Object.entries(groups).map(([label, items]) => {
+                    if (items.length === 0) return null;
+                    return (
+                      <div key={label} className="space-y-1">
+                        <div className="px-2 text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider">{label}</div>
+                        <SidebarMenu>
+                          {items.map(session => {
+                            const isActive = pathname === `/dashboard/research/${session.id}`;
+                            return (
+                              <SidebarMenuItem key={session.id}>
+                                <Link href={`/dashboard/research/${session.id}`} className="cursor-pointer">
+                                  <SidebarMenuButton isActive={isActive} className="h-auto py-2 flex items-start gap-2.5">
+                                    <div className="pt-0.5"><StatusIcon status={session.status} /></div>
+                                    <span className="truncate text-xs leading-snug">{session.original_query}</span>
+                                  </SidebarMenuButton>
+                                </Link>
+                              </SidebarMenuItem>
+                            );
+                          })}
+                        </SidebarMenu>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
@@ -164,12 +197,23 @@ function AppSidebar({ sessions, sessionsLoading }: { sessions: ResearchSession[]
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-56 mb-1">
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{displayName}</p>
-                <p className="text-xs text-muted-foreground">{userEmail}</p>
-              </div>
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium">{displayName}</p>
+                  <p className="text-xs text-muted-foreground">{userEmail}</p>
+                </div>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              render={
+                <Link href="/dashboard/profile" />
+              }
+            >
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleLogout}
@@ -233,7 +277,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <header className="flex h-12 items-center border-b px-4 gap-2 shrink-0">
             <SidebarTrigger />
           </header>
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 h-full overflow-hidden">
             {children}
           </main>
         </div>

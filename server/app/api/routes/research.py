@@ -15,7 +15,7 @@ router = APIRouter()
 
 class ResearchRequest(BaseModel):
     query: str
-    max_debate_rounds: int = 2
+    max_debate_rounds: int = 1  # 1 round = researcher + critic + synthesize (3 LLM calls total)
 
 class ResearchResponse(BaseModel):
     session_id: uuid.UUID
@@ -222,3 +222,31 @@ async def get_answer(
     if not answer:
         raise HTTPException(status_code=404, detail="Answer not found yet")
     return answer
+
+@router.get("/{session_id}/results")
+async def get_results(
+    session_id: uuid.UUID,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Single endpoint that returns sources, debate messages, and answer together.
+    Replaces three separate round trips with one."""
+    session = db.get(ResearchSession, session_id)
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    sources = db.exec(select(Source).where(Source.research_session_id == session_id)).all()
+
+    debate_row = db.exec(select(Debate).where(Debate.research_session_id == session_id)).first()
+    messages = (
+        db.exec(select(DebateMessage).where(DebateMessage.debate_id == debate_row.id).order_by(DebateMessage.round)).all()
+        if debate_row else []
+    )
+
+    answer = db.exec(select(ResearchAnswer).where(ResearchAnswer.research_session_id == session_id)).first()
+
+    return {
+        "sources": sources,
+        "debate": messages,
+        "answer": answer,
+    }

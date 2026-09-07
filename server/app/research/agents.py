@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 async def researcher_node(state: ResearchState) -> ResearchState:
     llm = get_llm()
-    context = "\n\n".join([f"Source: {s['url']}\n{s['content'][:1500]}" for s in state["deduplicated_context"]])
+    context = "\n\n".join([f"Source: {s['url']}\n{s['content'][:800]}" for s in state["deduplicated_context"]])
     
     debate_history = ""
     for msg in state.get("debate", []):
@@ -32,7 +32,7 @@ Provide your argument or rebuttal based ONLY on the evidence provided."""
 
 async def critic_node(state: ResearchState) -> ResearchState:
     llm = get_llm()
-    context = "\n\n".join([f"Source: {s['url']}\n{s['content'][:1500]}" for s in state["deduplicated_context"]])
+    context = "\n\n".join([f"Source: {s['url']}\n{s['content'][:800]}" for s in state["deduplicated_context"]])
     
     debate_history = ""
     for msg in state.get("debate", []):
@@ -62,8 +62,7 @@ Provide your critique or counter-argument based ONLY on the evidence provided.""
 
 async def synthesizer_node(state: ResearchState) -> ResearchState:
     llm = get_llm()
-    context = "\n\n".join([f"Source: {s['url']}\n{s['content'][:1500]}" for s in state["deduplicated_context"]])
-    
+    # Synthesizer only needs the debate — the context is already distilled in the positions
     debate_history = ""
     for msg in state.get("debate", []):
         debate_history += f"\n{msg['agent']} (Round {msg['round']}): {msg['message']}"

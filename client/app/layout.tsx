@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
-import { Figtree, Nunito_Sans } from "next/font/google";
+import { Playfair_Display, Roboto } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const nunitoSansHeading = Nunito_Sans({ subsets: ['latin'], variable: '--font-heading' });
+const roboto = Roboto({ 
+  subsets: ['latin'], 
+  weight: ['400', '500', '700'],
+  variable: '--font-sans' 
+});
 
-const figtree = Figtree({ subsets: ['latin'], variable: '--font-sans' });
+const playfairDisplay = Playfair_Display({ 
+  subsets: ['latin'], 
+  variable: '--font-heading' 
+});
 
 export const metadata: Metadata = {
   title: "Lyra — Autonomous Research",
@@ -17,7 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={cn("h-full", "antialiased", "font-sans", figtree.variable, nunitoSansHeading.variable)}
+      className={cn("h-full", "antialiased", "font-sans", roboto.variable, playfairDisplay.variable)}
     >
       <body className="min-h-full flex flex-col">
         <TooltipProvider>{children}</TooltipProvider>

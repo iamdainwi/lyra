@@ -63,7 +63,13 @@ export const researchApi = {
     const response = await api.get(`/research/${sessionId}/answer`);
     return response.data;
   },
-  
+
+  // Combined endpoint — replaces getSources + getDebate + getAnswer (3 round trips → 1)
+  getResults: async (sessionId: string) => {
+    const response = await api.get(`/research/${sessionId}/results`);
+    return response.data as { sources: unknown[]; debate: unknown[]; answer: unknown };
+  },
+
   // SSE stream URL - uses env variable
   getStreamUrl: (sessionId: string) => {
     const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
