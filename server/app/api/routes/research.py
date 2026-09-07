@@ -8,7 +8,7 @@ from typing import Dict
 from fastapi.responses import StreamingResponse
 
 from app.database.client import get_session
-from app.database.models import ResearchSession, ExpandedQuery, SearchResult, Source, Debate, DebateMessage, ResearchAnswer
+from app.database.models import ResearchSession, ExpandedQuery, SearchResult, Source, Debate, DebateMessage, ResearchAnswer, ChatMessage
 from app.research.workflow import research_graph
 
 router = APIRouter()
@@ -229,8 +229,7 @@ async def get_results(
     db: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """Single endpoint that returns sources, debate messages, and answer together.
-    Replaces three separate round trips with one."""
+    """Single endpoint that returns sources, debate messages, answer, and chat together."""
     session = db.get(ResearchSession, session_id)
     if not session or session.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -244,9 +243,76 @@ async def get_results(
     )
 
     answer = db.exec(select(ResearchAnswer).where(ResearchAnswer.research_session_id == session_id)).first()
+    
+    chat_messages = db.exec(select(ChatMessage).where(ChatMessage.research_session_id == session_id).order_by(ChatMessage.created_at)).all()
 
     return {
         "sources": sources,
         "debate": messages,
         "answer": answer,
+        "chat": chat_messages,
     }
+
+class ChatRequest(BaseModel):
+    message: str
+
+from app.core.llm import get_llm
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+
+@router.post("/{session_id}/chat")
+async def send_chat_message(
+    session_id: uuid.UUID,
+    request: ChatRequest,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    session = db.get(ResearchSession, session_id)
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Save user message
+    user_msg = ChatMessage(research_session_id=session_id, role="user", content=request.message)
+    db.add(user_msg)
+    db.commit()
+
+    # Get context (sources, final answer)
+    answer = db.exec(select(ResearchAnswer).where(ResearchAnswer.research_session_id == session_id)).first()
+    chat_history = db.exec(select(ChatMessage).where(ChatMessage.research_session_id == session_id).order_by(ChatMessage.created_at)).all()
+
+    context_text = answer.answer if answer else "No research answer generated yet."
+    
+    system_prompt = f"""You are a helpful research assistant. 
+You recently completed a deep research report on the topic: "{session.original_query}".
+Here is the final report you generated:
+---
+{context_text}
+---
+Answer the user's follow-up questions concisely based on this context. Use markdown formatting."""
+
+    messages = [SystemMessage(content=system_prompt)]
+    for msg in chat_history:
+        if msg.role == "user":
+            messages.append(HumanMessage(content=msg.content))
+        else:
+            messages.append(AIMessage(content=msg.content))
+
+    llm = get_llm()
+
+    async def chat_stream():
+        full_response = ""
+        try:
+            async for chunk in llm.astream(messages):
+                if chunk.content:
+                    full_response += chunk.content
+                    yield chunk.content
+        finally:
+            # Save assistant message once stream finishes or disconnects
+            if full_response:
+                # We need a new session generator here since the original one might be closed after response
+                db_gen = get_session()
+                bg_db = next(db_gen)
+                assistant_msg = ChatMessage(research_session_id=session_id, role="assistant", content=full_response)
+                bg_db.add(assistant_msg)
+                bg_db.commit()
+
+    return StreamingResponse(chat_stream(), media_type="text/plain")

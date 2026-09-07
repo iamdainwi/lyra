@@ -224,6 +224,7 @@ export default function ResearchSessionPage(props: { params: Promise<{ id: strin
   const [sources, setSources] = useState<Source[]>([]);
   const [debate, setDebate] = useState<DebateMessage[]>([]);
   const [answer, setAnswer] = useState<Answer | null>(null);
+  const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([]);
   const [status, setStatus] = useState<string>("loading");
   const [activeNode, setActiveNode] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -236,14 +237,15 @@ export default function ResearchSessionPage(props: { params: Promise<{ id: strin
     let pollInterval: ReturnType<typeof setInterval> | null = null;
 
     const fetchResults = async () => {
-      const [srcs, dbte, ans] = await Promise.all([
-        researchApi.getSources(sessionId).catch(() => [] as Source[]),
-        researchApi.getDebate(sessionId).catch(() => [] as DebateMessage[]),
-        researchApi.getAnswer(sessionId).catch(() => null),
-      ]);
-      setSources(srcs as Source[]);
-      setDebate(dbte as DebateMessage[]);
-      setAnswer(ans as Answer | null);
+      try {
+        const res = await researchApi.getResults(sessionId);
+        setSources(res.sources as Source[]);
+        setDebate(res.debate as DebateMessage[]);
+        setAnswer(res.answer as Answer | null);
+        if (res.chat) setChatMessages(res.chat);
+      } catch (err) {
+        console.error("Failed to fetch results", err);
+      }
     };
     fetchResultsRef.current = fetchResults;
 
@@ -301,18 +303,54 @@ export default function ResearchSessionPage(props: { params: Promise<{ id: strin
   };
 
   const handleFollowUp = async (q: string) => {
+    if (!q.trim() || followUpLoading) return;
     try {
       setFollowUpLoading(true);
-      const data = await researchApi.startSession(q);
-      if (data.session_id) router.push(`/dashboard/research/${data.session_id}`);
-    } catch { setFollowUpLoading(false); }
+      setChatMessages(prev => [...prev, { role: "user", content: q }]);
+
+      const token = await researchApi.getAuthToken();
+      const res = await fetch(researchApi.getChatUrl(sessionId), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: q })
+      });
+
+      if (!res.ok) throw new Error("Chat request failed");
+
+      setChatMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      if (reader) {
+        let done = false;
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          if (value) {
+            const chunk = decoder.decode(value, { stream: true });
+            setChatMessages(prev => {
+              const newMsgs = [...prev];
+              newMsgs[newMsgs.length - 1].content += chunk;
+              return newMsgs;
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFollowUpLoading(false);
+    }
   };
 
   const suggestions = session?.original_query ? [
-    `What are the latest developments in ${session.original_query}?`,
-    `What are the main criticisms of ${session.original_query}?`,
-    `How does ${session.original_query} compare to alternatives?`,
-    `What are the real-world implications of ${session.original_query}?`,
+    `Can you elaborate on this topic in more detail?`,
+    `What are the main counter-arguments or criticisms?`,
+    `How does this compare to alternative approaches?`,
+    `What are the real-world implications or applications?`,
   ] : [];
 
   // ── Loading ──────────────────────────────────────────────────────────────────
@@ -347,7 +385,7 @@ export default function ResearchSessionPage(props: { params: Promise<{ id: strin
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-2xl mx-auto px-5 md:px-10 py-12 md:py-20 space-y-12">
-            
+
             {/* Header */}
             <div className="space-y-4">
               <Link href="/dashboard" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -365,13 +403,13 @@ export default function ResearchSessionPage(props: { params: Promise<{ id: strin
                 <BrainCircuit className="w-5 h-5 text-primary animate-pulse" />
                 <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/80">Researching</h2>
               </div>
-              
+
               <div className="space-y-4">
                 {NODES.map((node, i) => {
                   const isCompleted = activeIdx > i || activeIdx === -1;
                   const isActive = activeIdx === i && activeIdx !== -1;
                   const isUpcoming = activeIdx < i && activeIdx !== -1;
-                  
+
                   return (
                     <div key={node} className={`flex items-center gap-3.5 transition-opacity duration-300 ${isUpcoming ? "opacity-30" : "opacity-100"}`}>
                       <div className="shrink-0 flex items-center justify-center w-6 h-6">
@@ -404,7 +442,7 @@ export default function ResearchSessionPage(props: { params: Promise<{ id: strin
   // ── Completed ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full bg-background relative overflow-hidden">
-      
+
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto px-5 md:px-10 py-8">
@@ -478,10 +516,37 @@ export default function ResearchSessionPage(props: { params: Promise<{ id: strin
               )}
 
               {/* Agent reasoning — collapsed */}
-              {debate.length > 0 && (
+              {/* {debate.length > 0 && (
                 <div className="space-y-2 pt-2">
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">Agent Reasoning</p>
                   <DebateAccordion messages={debate} />
+                </div>
+              )} */}
+
+              {/* Chat Thread */}
+              {chatMessages.length > 0 && (
+                <div className="space-y-8 pt-8 mt-8 border-t border-border/60">
+                  {chatMessages.map((msg, i) => (
+                    <div key={i} className="flex gap-4">
+                      <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-muted/60 border border-border/50">
+                        {msg.role === "user" ? <span className="text-xs font-semibold">ME</span> : <BrainCircuit className="w-4 h-4 text-primary" />}
+                      </div>
+                      <div className="flex-1 min-w-0 prose prose-base dark:prose-invert max-w-none 
+                        prose-p:leading-relaxed prose-p:text-foreground/85
+                        prose-headings:font-heading prose-headings:font-semibold
+                        prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+                        prose-code:text-primary prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[0.8em]
+                        prose-pre:bg-[#0d1117] prose-pre:rounded-xl prose-pre:text-[0.8em]">
+                        {msg.role === "user" ? (
+                          <div className="font-semibold text-[1.1rem] text-foreground pt-1">{msg.content}</div>
+                        ) : (
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                            {msg.content || "..."}
+                          </ReactMarkdown>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 

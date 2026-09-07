@@ -67,7 +67,7 @@ export const researchApi = {
   // Combined endpoint — replaces getSources + getDebate + getAnswer (3 round trips → 1)
   getResults: async (sessionId: string) => {
     const response = await api.get(`/research/${sessionId}/results`);
-    return response.data as { sources: unknown[]; debate: unknown[]; answer: unknown };
+    return response.data as { sources: unknown[]; debate: unknown[]; answer: unknown, chat: { role: string; content: string }[] };
   },
 
   // SSE stream URL - uses env variable
@@ -76,6 +76,11 @@ export const researchApi = {
     return `${base}/api/research/${sessionId}/stream`;
   },
   
+  getChatUrl: (sessionId: string) => {
+    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    return `${base}/api/research/${sessionId}/chat`;
+  },
+
   getAuthToken: async () => {
     const { data } = await supabase.auth.getSession();
     return data?.session?.access_token || '';

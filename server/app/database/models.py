@@ -27,6 +27,7 @@ class ResearchSession(SQLModel, table=True):
     sources: List["Source"] = Relationship(back_populates="session")
     debates: List["Debate"] = Relationship(back_populates="session")
     final_answer: Optional["ResearchAnswer"] = Relationship(back_populates="session")
+    chat_messages: List["ChatMessage"] = Relationship(back_populates="session")
 
 class ExpandedQuery(SQLModel, table=True):
     __tablename__ = "expanded_queries" # type: ignore
@@ -108,3 +109,13 @@ class ResearchAnswer(SQLModel, table=True):
     recommendations: Optional[str] = None
 
     session: ResearchSession = Relationship(back_populates="final_answer")
+
+class ChatMessage(SQLModel, table=True):
+    __tablename__ = "chat_messages" # type: ignore
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    research_session_id: uuid.UUID = Field(foreign_key="research_sessions.id")
+    role: str # 'user' or 'assistant'
+    content: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    session: ResearchSession = Relationship(back_populates="chat_messages")
